@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+env/
+.venv/
+
+# Data & corpus (don't commit large data files)
+data/corpus/*.json
+
+# Logs
+logs/*.log
+logs/log.txt
+
+# Output predictions (submit separately)
+output.csv
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# node_modules (if any frontend added)
+node_modules/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
