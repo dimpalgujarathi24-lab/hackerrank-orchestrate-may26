@@ -1,33 +1,34 @@
-# secrets
-.env
-.env.local
-*.pem
-*.key
-
-# deps
-node_modules/
-.pnpm-store/
-.venv/
-venv/
+# Python
 __pycache__/
-*.pyc
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
+*.py[cod]
+*.pyo
+.env
+venv/
+env/
+.venv/
 
-# build
-dist/
-build/
-*.tsbuildinfo
+# Data & corpus (don't commit large data files)
+data/corpus/*.json
 
-# editor / os
+# Logs
+logs/*.log
+logs/log.txt
+
+# Output predictions (submit separately)
+output.csv
+
+# OS
 .DS_Store
-.idea/
-.vscode/
 Thumbs.db
 
-# local data / caches the participant may create
-data/index/
-data/embeddings/
-*.sqlite
-*.db
+# IDE
+.vscode/
+.idea/
+
+# node_modules (if any frontend added)
+node_modules/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/

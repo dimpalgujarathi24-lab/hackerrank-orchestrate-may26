@@ -1,134 +1,185 @@
-# HackerRank Orchestrate
+# Multi-Domain Support Triage Agent
 
-Starter repository for the **HackerRank Orchestrate** 24-hour hackathon (May 1–2, 2026).
-
-Build a terminal-based AI agent that triages real support tickets across three product ecosystems; **HackerRank**, **Claude**, and **Visa** — using only the support corpus shipped in this repo.
-
-Read [`problem_statement.md`](./problem_statement.md) for the full task spec, input/output schema, and allowed values, and [`evalutation_criteria.md`](./evalutation_criteria.md) for how submissions are scored.
-
----
-
-## Contents
-
-1. [Repository layout](#repository-layout)
-2. [What you need to build](#what-you-need-to-build)
-3. [Where your code goes](#where-your-code-goes)
-4. [Quickstart](#quickstart)
-5. [Chat transcript logging](#chat-transcript-logging)
-6. [Submission](#submission)
-7. [Judge interview](#judge-interview)
-8. [Evaluation criteria](#evaluation-criteria)
+A terminal-based AI support triage agent that handles tickets across three ecosystems:
+- **HackerRank** — developer assessment and hiring platform
+- **Claude (Anthropic)** — AI assistant platform
+- **Visa** — global payment network
 
 ---
 
-## Repository layout
+## Architecture
 
 ```
-.
-├── AGENTS.md                       # Rules for AI coding tools + transcript logging
-├── problem_statement.md            # Full task description and I/O schema
-├── README.md                       # You are here
-├── code/                           # ← Build your agent here
-│   └── main.py                     #   Entry point (rename/extend as you like)
-├── data/                           # Local-only support corpus (no network needed)
-│   ├── hackerrank/                 #   HackerRank help center
-│   ├── claude/                     #   Claude Help Center export
-│   └── visa/                       #   Visa consumer + small-business support
-└── support_tickets/
-    ├── sample_support_tickets.csv  # Inputs + expected outputs (for development)
-    ├── support_tickets.csv         # Inputs only (run your agent on these)
-    └── output.csv                  # Write your agent's predictions here
+code/
+├── run.py                  # Main CLI entry point
+├── requirements.txt
+├── agent/
+│   └── triage_agent.py     # Core agent orchestrator
+├── utils/
+│   ├── classifier.py       # Domain + ticket classification
+│   ├── escalation.py       # Escalation decision logic
+│   ├── corpus_loader.py    # Support doc fetching + caching
+│   ├── retriever.py        # TF-IDF document retrieval
+│   ├── claude_client.py    # Anthropic API response generation
+│   └── logger.py           # Logging + chat transcript
+├── data/
+│   ├── corpus/             # Cached support documentation (JSON)
+│   └── support_issues_sample.csv
+└── logs/
+    ├── agent.log           # Detailed execution log
+    └── log.txt             # Chat transcript (required for submission)
 ```
 
 ---
 
-## What you need to build
+## How It Works
 
-A terminal-based agent that, for each row in `support_tickets/support_tickets.csv`, produces:
+For each support ticket, the agent:
 
-| Column         | Allowed values                                          |
-| -------------- | ------------------------------------------------------- |
-| `status`       | `replied`, `escalated`                                  |
-| `product_area` | most relevant support category / domain area            |
-| `response`     | user-facing answer grounded in the provided corpus      |
-| `justification`| concise explanation of the routing/answering decision   |
-| `request_type` | `product_issue`, `feature_request`, `bug`, `invalid`    |
+1. **Classifies** the ticket:
+   - Detects domain (HackerRank / Claude / Visa) using keyword matching
+   - Identifies product area (billing, account, fraud, proctoring, etc.)
+   - Determines request type (FAQ, bug, billing inquiry, fraud report, etc.)
+   - Assigns sensitivity level (low / medium / high)
 
-Hard requirements (from `problem_statement.md`):
+2. **Checks for escalation** using 3-tier logic:
+   - Global hard rules (fraud, legal threats, data deletion, breach)
+   - Domain-specific rules (disputed plagiarism flags, billing disputes, lost cards)
+   - Sensitivity threshold + product area risk matrix
 
-- Must be **terminal-based**.
-- Must use **only the provided support corpus** (no live web calls for ground-truth answers).
-- Must **escalate** high-risk, sensitive, or unsupported cases instead of guessing.
-- Must avoid hallucinated policies or unsupported claims.
+3. **Retrieves relevant documentation** using TF-IDF cosine similarity over the support corpus
 
-Beyond that you are free to bring your own approach — RAG, vector DBs, tool use, structured output, agent frameworks, classical ML, or anything else.
+4. **Generates a response**:
+   - If escalating → safe templated escalation message
+   - If replying → calls Claude API with retrieved context as grounding, strictly constrained to corpus
 
----
-
-## Where your code goes
-
-All of your work belongs in [`code/`](./code/). The repo ships with an empty `code/main.py` you can grow into your full agent — add more modules (`agent.py`, `retriever.py`, `classifier.py`, etc.) next to it as needed.
-
-Conventions:
-
-- Put a **README inside `code/`** describing how to install dependencies and run your agent.
-- Read secrets **from environment variables only** (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, …). Copy `.env.example` → `.env` (already gitignored) if you keep one. **Never hardcode keys.**
-- Be **deterministic** where possible. Seed any random sampling.
-- Write responses to `support_tickets/output.csv`.
+5. **Outputs** structured CSV + human-readable transcript
 
 ---
 
-## Quickstart
+## Setup
 
-Clone this repository:
+### 1. Clone the repo
 
 ```bash
-git clone git@github.com:interviewstreet/hackerrank-orchestrate-may26.git
+git clone https://github.com/interviewstreet/hackerrank-orchestrate-may26.git
 cd hackerrank-orchestrate-may26
 ```
 
-You are free to use any language or runtime. We recommend **Python**, **JavaScript**, or **TypeScript**.
+### 2. Copy your code into the repo
+
+Place all files from `code/` into the repo's `code/` directory.
+
+### 3. Install dependencies
+
+```bash
+cd code
+pip install -r requirements.txt
+```
+
+### 4. Set your Anthropic API key
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx
+```
+
+### 5. Run in batch mode (process the CSV)
+
+```bash
+python run.py --csv ../support_issues/support_issues.csv --out output.csv
+```
+
+### 6. Run in interactive mode (test individual tickets)
+
+```bash
+python run.py
+```
 
 ---
 
-## Chat transcript logging
+## Output Files
 
-This repo ships with an `AGENTS.md` that any modern AI coding tool (Cursor, Claude Code, Codex, Gemini CLI, Copilot, etc.) will read. It instructs the tool to append every conversation turn to a single shared log file:
+| File | Description |
+|------|-------------|
+| `output.csv` | Predictions for all tickets |
+| `logs/log.txt` | Chat transcript (required for submission) |
+| `logs/agent.log` | Detailed debug log |
 
-| Platform       | Path                                              |
-| -------------- | ------------------------------------------------- |
-| macOS / Linux  | `$HOME/hackerrank_orchestrate/log.txt`            |
-| Windows        | `%USERPROFILE%\hackerrank_orchestrate\log.txt`    |
+### output.csv columns
 
-You don't need to do anything to enable it — just use your AI tool normally. You'll upload this `log.txt` as your chat transcript at submission time.
-
----
-
-## Submission
-
-Submit on the HackerRank Community Platform:
-<https://www.hackerrank.com/contests/hackerrank-orchestrate-may26/challenges/support-agent/submission>
-
-You will upload **three** files:
-
-1. **Code zip** — zip your `code/` directory and upload it. Exclude virtualenvs, `node_modules`, build artifacts, the `data/` corpus, and the `support_tickets/` CSVs.
-2. **Predictions CSV** — your agent's output for `support_tickets/support_tickets.csv` (i.e. the populated `output.csv`).
-3. **Chat transcript** — the `log.txt` from the path in [Chat transcript logging](#chat-transcript-logging).
+| Column | Description |
+|--------|-------------|
+| `ticket_id` | Original ticket ID |
+| `domain` | Detected domain: hackerrank / claude / visa |
+| `product_area` | Sub-area: billing, fraud, account, proctoring, etc. |
+| `request_type` | faq / bug_report / billing_inquiry / fraud_report / account_access / etc. |
+| `sensitivity` | low / medium / high |
+| `action` | REPLY or ESCALATE |
+| `escalation_reason` | Why escalated (empty if REPLY) |
+| `retrieved_sources` | Top matched documentation sources |
+| `response` | Generated support response |
 
 ---
 
-## Judge interview
+## Escalation Logic
 
-After a successful submission, your AI Judge interview will happen within a few hours after the hackathon ends. It will stay open for the next 4 hours. 
+The agent escalates (instead of auto-replying) when:
 
-The AI Judge will have access to your submission and may ask about your approach, decisions, and how you used AI while building your solution. The interview will be 30 minutes long, and keeping your camera on is mandatory.
-
-Results will be announced on May 15, 2026
+- **Fraud or unauthorized transactions** detected
+- **Legal threats** or complaints involving lawyers/lawsuits
+- **Account compromise** or security breach reported
+- **Data deletion / GDPR** requests
+- **Lost or stolen cards** (Visa)
+- **Billing disputes** (Claude, HackerRank)
+- **Plagiarism flag disputes** (HackerRank)
+- **Account access issues** requiring identity verification
+- **High sensitivity** signals in the ticket text
 
 ---
 
-## Evaluation criteria
+## Corpus Strategy
 
-Submissions are scored across four dimensions: agent design (your `code/`), the AI Judge interview, output accuracy on `support_tickets/output.csv`, and AI fluency from your chat transcript.
+The agent uses a two-layer corpus strategy:
 
-See [`evalutation_criteria.md`](./evalutation_criteria.md) for the full rubric.
+1. **Web scraping** (first run): scrapes articles from the official support sites and caches them as JSON in `data/corpus/`
+2. **Fallback corpus**: hand-crafted FAQ documents covering common scenarios across all three domains — used when scraping fails or sites are unavailable
+
+All responses are strictly grounded in this corpus. The Claude API is instructed never to fabricate policies or procedures not found in the documentation.
+
+---
+
+## Sample Ticket Flow
+
+```
+INPUT:  "Unauthorized transaction on my card. Rs. 4500 at an online merchant."
+        domain=visa
+
+  → Classify: domain=visa, area=fraud, type=fraud_report, sensitivity=high
+  → Escalate:  YES — "potential fraud or unauthorized transaction"
+  → Response:  Safe escalation message directing user to bank + Visa assistance
+
+INPUT:  "How do I cancel my Claude Pro subscription?"
+        domain=claude
+
+  → Classify: domain=claude, area=billing, type=billing_inquiry, sensitivity=medium
+  → Escalate:  YES — "sensitive billing issue requiring account verification"  
+  → Response:  Escalation to billing team
+
+INPUT:  "How does proctoring work during HackerRank assessments?"
+        domain=hackerrank
+
+  → Classify: domain=hackerrank, area=proctoring, type=faq, sensitivity=low
+  → Escalate:  NO
+  → Retrieve:  [Proctoring article, Test environment article, …]
+  → Response:  Grounded answer from corpus about webcam, tab-monitoring, etc.
+```
+
+---
+
+## Design Decisions
+
+- **No hallucination**: Claude API is constrained via system prompt to only use provided documentation
+- **Domain-first retrieval**: corpus is scoped to detected domain before similarity search
+- **Multi-signal escalation**: three independent escalation layers ensure no sensitive ticket slips through
+- **Graceful fallback**: if API fails, the top retrieved chunk is used directly as a response
+- **Caching**: corpus is scraped once and cached, making subsequent runs fast and offline-capable
